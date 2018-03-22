@@ -36,11 +36,13 @@ static const std::string dataStr[] =  {
   "difference" , 
   "vorticity"
 };
+
 static std::vector<vec4f> colorList = {  // transfer functions
   vec4f{0.0, 0.0, 1.0, 0.0},
   vec4f{0.86500299999999997, 0.86500299999999997, 0.86500299999999997, 0.5},
   vec4f{1.0, 0.0, 0.0, 1.0}
 };
+
 static size_t split_threshold = 4000;
 static size_t dataIdx = 0;               // which feature to choose (0 -> time)
 static std::vector<size_t>  fileIdx;     // the file id of each point
@@ -49,6 +51,9 @@ static bool write_velocity = false;
 
 static std::vector<float> dataval;
 static std::vector<float> velocity;
+
+static std::array<int, 1024> hist;
+static std::array<uint8_t, 1024 * 1024> fb;
 
 inline void time2velocity(std::vector<float> &velocity, const swcFile& outputData)
 {
@@ -75,7 +80,6 @@ inline void time2velocity(std::vector<float> &velocity, const swcFile& outputDat
 			(y - y_next) * (y - y_next) +
 			(z - z_next) * (z - z_next));
       velocity.push_back(dis);
-      //std::cout << dis << std::endl;
     }
     velocity.push_back(velocity.back()); // a hack
   }
@@ -170,9 +174,8 @@ int main(int argc, const char** argv)
   }
   std::cout << "[i/o] done reading files" << std::endl << std::endl;
 
-  // convert feature to color
+  // compute velocity
   if (write_velocity) {
-
     // convert feature to velocity
     std::cout << "[velocity] start compute velocity" << std::endl;
     for (auto f = 0; f < num_files; ++f) {
@@ -180,58 +183,33 @@ int main(int argc, const char** argv)
     }
     std::cout << "[velocity] done compute velocity: " 
 	      << velocity.size() << " velocity found" << std::endl;
-
-    // find the max and the min
-    const float tmin = *std::max_element(velocity.begin(), velocity.end());
-    const float tmax = *std::min_element(velocity.begin(), velocity.end());
-    const float trdis = 1.0f / (tmax - tmin);
-    // lerp
-    for(size_t i = 0; i < velocity.size(); ++i) {
-      // get value
-      float t = velocity[i];
-      // fine the index and the fraction
-      const float ratio = (t - tmin) * trdis * colorList.size();
-      const int    N = int(ratio);
-      const float  R = ratio - N;
-      vec4f color;
-      if (N < 0) {
-	color = colorList.front();
-      }	else if (N >= colorList.size()) {
-	color = colorList.back();
-      } else {
-	color = lerp(colorList[N], colorList[N+1], R);
-	// std::cout << color.w << std::endl;
-      }
-      outputDataList[fileIdx[i]].color.push_back(color);
-    }
-
-  } else {
-
-    // find the max and the min
-    const float tmin = *std::max_element(dataval.begin(), dataval.end());
-    const float tmax = *std::min_element(dataval.begin(), dataval.end());
-    const float trdis = 1.0f / (tmax - tmin);
-    // lerp
-    for (auto i = 0; i < dataval.size(); ++i) {
-      // get value
-      float t = dataval[i];
-      // fine the index and the fraction
-      const float ratio = (t - tmin) * trdis * colorList.size();
-      const int    N = int(ratio);
-      const float  R = ratio - N;
-      vec4f color;
-      if (N < 0) {
-	color = colorList.front();
-      }	else if (N >= colorList.size()) {
-	color = colorList.back();
-      } else {
-	color = lerp(colorList[N], colorList[N+1], R);
-      }    
-      outputDataList[fileIdx[i]].color.push_back(color);
-    }
-
   }
-    
+  std::vector<float>& data = write_velocity ? velocity : dataval;
+
+  // find the max and the min
+  const float tmin = *std::max_element(data.begin(), data.end());
+  const float tmax = *std::min_element(data.begin(), data.end());
+  const float trdis = 1.0f / (tmax - tmin);
+
+  // generate histogram && convert feature to color   
+  for(size_t i = 0; i < data.size(); ++i) {
+    // get value
+    float t = data[i];
+    // fine the index and the fraction
+    const float ratio = (t - tmin) * trdis * colorList.size();
+    const int    N = int(ratio);
+    const float  R = ratio - N;
+    vec4f color;
+    if (N < 0) {
+      color = colorList.front();
+    }	else if (N >= colorList.size()) {
+      color = colorList.back();
+    } else {
+      color = lerp(colorList[N], colorList[N+1], R);
+    }
+    outputDataList[fileIdx[i]].color.push_back(color);
+  }
+
   // WRITE TO OUTPUT
   std::cout << std::endl;
   std::cout << "[i/o] start writing swc ..." << std::endl;    

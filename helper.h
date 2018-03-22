@@ -9,6 +9,7 @@
 #include <fstream>
 #include <algorithm>
 #include <vector>
+#include <array>
 #include <cmath>
 
 inline void PrintBuddha (std::ostream& os) 
