@@ -71,10 +71,11 @@ inline void time2velocity(std::vector<float> &velocity, const swcFile& outputDat
       float y_next = outputData.position[j + 1].y;
       float z = outputData.position[j].z;
       float z_next = outputData.position[j + 1].z;
-      float dis = sqrtf(abs(x - x_next) * abs(x - x_next) + 
-			abs(y - y_next) * abs(y - y_next) +
-			abs(z - z_next) * abs(z - z_next));
+      float dis = sqrtf((x - x_next) * (x - x_next) + 
+			(y - y_next) * (y - y_next) +
+			(z - z_next) * (z - z_next));
       velocity.push_back(dis);
+      //std::cout << dis << std::endl;
     }
     velocity.push_back(velocity.back()); // a hack
   }
@@ -190,7 +191,7 @@ int main(int argc, const char** argv)
       float t = velocity[i];
       // fine the index and the fraction
       const float ratio = (t - tmin) * trdis * colorList.size();
-      const size_t N = int(ratio);
+      const int    N = int(ratio);
       const float  R = ratio - N;
       vec4f color;
       if (N < 0) {
@@ -199,7 +200,8 @@ int main(int argc, const char** argv)
 	color = colorList.back();
       } else {
 	color = lerp(colorList[N], colorList[N+1], R);
-      }    
+	// std::cout << color.w << std::endl;
+      }
       outputDataList[fileIdx[i]].color.push_back(color);
     }
 
@@ -215,7 +217,7 @@ int main(int argc, const char** argv)
       float t = dataval[i];
       // fine the index and the fraction
       const float ratio = (t - tmin) * trdis * colorList.size();
-      const size_t N = int(ratio);
+      const int    N = int(ratio);
       const float  R = ratio - N;
       vec4f color;
       if (N < 0) {

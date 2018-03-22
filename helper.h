@@ -81,10 +81,10 @@ template<>
 vec4f lerp<vec4f>(const vec4f& a, const vec4f& b, const double r)
 {
   return vec4f{
-    lerp(a.x, b.x, r),
-    lerp(a.y, b.y, r),
-    lerp(a.z, b.z, r),
-    lerp(a.w, b.w, r)
+    lerp<float>(a.x, b.x, r),
+    lerp<float>(a.y, b.y, r),
+    lerp<float>(a.z, b.z, r),
+    lerp<float>(a.w, b.w, r)
   };
 }
 
