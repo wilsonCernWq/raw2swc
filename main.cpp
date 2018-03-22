@@ -31,7 +31,7 @@
 // GLOBAL VARIABLES
 static const std::string dataStr[] =  {
   "time",
-  "magnititude", 
+  "magnitude", 
   "derivative" , 
   "difference" , 
   "vorticity"
@@ -39,8 +39,11 @@ static const std::string dataStr[] =  {
 
 static std::vector<vec4f> colorList = {  // transfer functions
   vec4f{0.0, 0.0, 1.0, 0.0},
-  vec4f{0.86500299999999997, 0.86500299999999997, 0.86500299999999997, 0.5},
-  vec4f{1.0, 0.0, 0.0, 1.0}
+  vec4f{0.0, 0.86500299999999997, 0.4, 0.1},
+  vec4f{0.86500299999999997, 0.86500299999999997, 0.8, 0.8},
+  vec4f{1.0, 0.0, 0.0, 1.0},
+  vec4f{1.0, 0.0, 0.0, 1.0},
+  vec4f{1.0, 0.0, 0.0, 1.0},
 };
 
 static size_t split_threshold = 4000;
@@ -242,7 +245,6 @@ int main(int argc, const char** argv)
     }
     const auto y = (std::pow((float)hist[i] / histcount, 0.5f)) * histh;
     const auto a = color.w  * histh;
-    std::cout << y << std::endl;
     for (auto j = 0; j < histh; ++j) {
       const auto idx = i + j * histw;
       if (j < y) {
@@ -271,7 +273,7 @@ int main(int argc, const char** argv)
     }
   }
   writePPM("hist.ppm", histw, histh, fb.data());
-  return 0;
+
   // WRITE TO OUTPUT
   std::cout << "[i/o] start writing swc ..." << std::endl;    
   for (auto f = 0; f < num_files; ++f) {
