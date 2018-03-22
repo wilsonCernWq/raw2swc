@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 2.8)
+project(raw2swc)
+set(CMAKE_CXX_STANDARD 11)
+set(SOURCE_FILES main.cpp helper.h)
+add_executable(raw2swc ${SOURCE_FILES})
