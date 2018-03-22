@@ -52,8 +52,10 @@ static bool write_velocity = false;
 static std::vector<float> dataval;
 static std::vector<float> velocity;
 
-static std::array<int, 1024> hist;
-static std::array<uint8_t, 1024 * 1024> fb;
+static const size_t histw = 1024;
+static const size_t histh = 256;
+static std::array<size_t, histw> hist = {size_t{0}};
+static std::array<uint32_t, histw * histh> fb = {uint32_t{0}};
 
 inline void time2velocity(std::vector<float> &velocity, const swcFile& outputData)
 {
@@ -183,6 +185,7 @@ int main(int argc, const char** argv)
     }
     std::cout << "[velocity] done compute velocity: " 
 	      << velocity.size() << " velocity found" << std::endl;
+    std::cout << std::endl;
   }
   std::vector<float>& data = write_velocity ? velocity : dataval;
 
@@ -192,31 +195,90 @@ int main(int argc, const char** argv)
   const float trdis = 1.0f / (tmax - tmin);
 
   // generate histogram && convert feature to color   
-  for(size_t i = 0; i < data.size(); ++i) {
+  for (size_t i = 0; i < data.size(); ++i) {
     // get value
     float t = data[i];
-    // fine the index and the fraction
-    const float ratio = (t - tmin) * trdis * colorList.size();
-    const int    N = int(ratio);
-    const float  R = ratio - N;
-    vec4f color;
-    if (N < 0) {
-      color = colorList.front();
-    }	else if (N >= colorList.size()) {
-      color = colorList.back();
-    } else {
-      color = lerp(colorList[N], colorList[N+1], R);
+    const float ratio = (t - tmin) * trdis;
+
+    // find the histogram index
+    {
+      const int N = std::round(ratio * (hist.size() - 1));
+      if (N < 0) {
+	++hist.front();
+      }	else if (N > hist.size()-1) {
+	++hist.back();
+      } else {
+	++hist[N];
+      }      
     }
-    outputDataList[fileIdx[i]].color.push_back(color);
+
+    // find the TFN index and the fraction
+    {      
+      const int    N = int(ratio * (colorList.size()-1));
+      const float  R = ratio * (colorList.size()-1) - N;
+      vec4f color;
+      if (N < 0) {
+	color = colorList.front();
+      }	else if (N >= colorList.size()-1) {
+	color = colorList.back();
+      } else {
+	color = lerp(colorList[N], colorList[N+1], R);
+      }
+      outputDataList[fileIdx[i]].color.push_back(color);
+    }
   }
 
+  // WRITE TO HISTOGRAM
+  const auto histcount = *std::max_element(hist.begin(), hist.end());
+  for (auto i = 0; i < histw; ++i) {
+    const float ratio = (colorList.size()-1) * ((float)i / (histw-1));
+    const size_t N = int(ratio);
+    const float  R = ratio - N;
+    vec4f color;
+    if (N < 0) color = colorList.front();
+    else if (N >= colorList.size() - 1) color = colorList.back();
+    else {
+      color = lerp(colorList[N], colorList[N+1], R);
+    }
+    const auto y = (std::pow((float)hist[i] / histcount, 0.5f)) * histh;
+    const auto a = color.w  * histh;
+    std::cout << y << std::endl;
+    for (auto j = 0; j < histh; ++j) {
+      const auto idx = i + j * histw;
+      if (j < y) {
+      	vec4f c = lerp(vec4f{1.f,1.f,1.f,1.f}, color, 0.1f);
+      	uint8_t *d = (uint8_t*) &(fb[idx]);
+      	d[0] = uint8_t(std::round(c.x * 255));
+      	d[1] = uint8_t(std::round(c.y * 255));
+      	d[2] = uint8_t(std::round(c.z * 255));
+      	d[3] = uint8_t(std::round(c.w * 255));
+      }
+      else if (j < a) {
+      	vec4f c = lerp(vec4f{0.5f,0.5f,0.5f,1.f}, color, 0.5f);
+      	uint8_t *d = (uint8_t*) &(fb[idx]);
+      	d[0] = uint8_t(std::round(c.x * 255));
+      	d[1] = uint8_t(std::round(c.y * 255));
+      	d[2] = uint8_t(std::round(c.z * 255));
+      	d[3] = uint8_t(std::round(c.w * 255));
+      }
+      else {
+	uint8_t *d = (uint8_t*) &(fb[idx]);
+	d[0] = uint8_t(std::round(color.x * 255));
+	d[1] = uint8_t(std::round(color.y * 255));
+	d[2] = uint8_t(std::round(color.z * 255));
+	d[3] = uint8_t(std::round(color.w * 255));
+      }
+    }
+  }
+  writePPM("hist.ppm", histw, histh, fb.data());
+  return 0;
   // WRITE TO OUTPUT
-  std::cout << std::endl;
   std::cout << "[i/o] start writing swc ..." << std::endl;    
   for (auto f = 0; f < num_files; ++f) {
     std::string fstr = num_files == 1 ? "" : "-" + std::to_string(f);
     std::string dstr = (write_velocity ? "velocity" : dataStr[dataIdx]);
-    outputDataList[f].writeToOutput((file_out + fstr + "-" + dstr + ".swc").c_str()); 
+    outputDataList[f].writeToOutput((file_out + fstr + 
+				     "-" + dstr + ".swc").c_str()); 
   }
   std::cout << "[i/o] done writing swc ..." << std::endl; 
   std::cout << std::endl;

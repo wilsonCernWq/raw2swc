@@ -67,6 +67,32 @@ inline CommandLine::CommandLine(int argc, const char** argv) {
   }
 }
 
+// helper function to write the rendered image as PPM file
+inline void writePPM(const char *fileName,
+		     const size_t sizex,
+		     const size_t sizey,
+		     const uint32_t *pixel)
+{
+  auto *file = fopen(fileName, "wb");
+  if (!file) {
+    fprintf(stderr, "fopen('%s', 'wb') failed: %d", fileName, errno);
+    return;
+  }
+  fprintf(file, "P6\n%i %i\n255\n", sizex, sizey);
+  auto *out = (uint8_t *)alloca(3 * sizex);
+  for (auto y = 0; y < sizey; y++) {
+    const auto *in = (const uint8_t *) &pixel[(sizey - 1 - y) * sizex];
+    for (auto x = 0; x < sizex; x++) {
+      out[3 * x + 0] = in[4 * x + 0];
+      out[3 * x + 1] = in[4 * x + 1];
+      out[3 * x + 2] = in[4 * x + 2];
+    }
+    fwrite(out, 3 * sizex, sizeof(uint8_t), file);
+  }
+  fprintf(file, "\n");
+  fclose(file);
+}
+
 template<typename T>
 T readBinary(std::ifstream& file) {
   T x; file.read((char*)&x, sizeof(T));
@@ -99,7 +125,7 @@ struct swcFile
   std::vector<int> component;
   void writeToOutput(const std::string& filename)
   {
-    std::cout << "writting file: " << filename << std::endl;
+    std::cout << "[i/o] >> writting file: " << filename << std::endl;
     std::ofstream outfile (filename, std::ios::trunc);
     for (int i = 0; i < index.size(); i++) {
       outfile << index[i]      << ' '
