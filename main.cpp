@@ -110,7 +110,9 @@ int main(int argc, const char** argv)
   size_t num_files = (num_lines + split_threshold - 1) / split_threshold;
 
   // debug
-  std::cout << "raw2swc (佛祖保佑无BUG)" << std::endl
+  PrintBuddha(std::cout);
+  std::cout << std::endl
+	    << "raw2swc (佛祖保佑无BUG)" << std::endl
 	    << "Parsing: " << file_in << std::endl
 	    << "compute velocity? " << write_velocity << std::endl
 	    << "split threshold = "    << split_threshold << std::endl
