@@ -37,16 +37,35 @@ static const std::string dataStr[] =  {
   "vorticity"
 };
 
+// static std::vector<vec4f> colorList = {  // transfer functions
+//   vec4f{1.0, 0.0, 0.0, 1.0},
+//   vec4f{1.0, 0.0, 0.0, 0.9},
+//   vec4f{0.86500299999999997, 0.86500299999999997, 0.8, 0.8},
+//   vec4f{0.0, 0.86500299999999997, 0.4, 0.3},
+//   vec4f{0.0, 0.1, 0.6, 0.1},
+//   vec4f{0.0, 0.0, 1.0, 0.00},
+//   vec4f{0.0, 0.0, 1.0, 0.00},
+//   vec4f{0.0, 0.0, 1.0, 0.00},
+// };
+
 static std::vector<vec4f> colorList = {  // transfer functions
-  vec4f{0.0, 0.0, 1.0, 0.0},
-  vec4f{0.0, 0.86500299999999997, 0.4, 0.1},
-  vec4f{0.86500299999999997, 0.86500299999999997, 0.8, 0.8},
-  vec4f{1.0, 0.0, 0.0, 1.0},
-  vec4f{1.0, 0.0, 0.0, 1.0},
-  vec4f{1.0, 0.0, 0.0, 1.0},
+  vec4f{0.0, 0.0, 1.0, 1.00},
+  vec4f{0.0, 0.0, 0.9, 0.95},
+  vec4f{0.0, 0.1, 0.9, 0.80},
+  vec4f{0.1, 0.9, 0.9, 0.50},
+  vec4f{0.1, 0.9, 0.8, 0.50},
+  vec4f{0.8, 0.9, 0.1, 0.50},
+  vec4f{0.9, 0.9, 0.1, 0.50},
+  vec4f{0.9, 0.1, 0.0, 0.20},
+  vec4f{0.9, 0.0, 0.0, 0.05},
+  vec4f{1.0, 0.0, 0.0, 0.00},
+  vec4f{1.0, 0.0, 0.0, 0.00},
+  vec4f{1.0, 0.0, 0.0, 0.00},
+  vec4f{1.0, 0.0, 0.0, 0.00},
+  vec4f{1.0, 0.0, 0.0, 0.00},
 };
 
-static size_t split_threshold = 4000;
+static size_t split_threshold = 0;
 static size_t dataIdx = 0;               // which feature to choose (0 -> time)
 static std::vector<size_t>  fileIdx;     // the file id of each point
 static std::vector<swcFile> outputDataList;
@@ -105,6 +124,9 @@ int main(int argc, const char** argv)
     else if (str == "-split") {
       split_threshold = std::max(0, std::atoi(argv[++i]));
     } 
+    else if (str[0] == '-') {
+      throw std::runtime_error("unknown argument: " + str);
+    }
     else {
       inputFiles.push_back(argv[i]);
     }
@@ -123,6 +145,10 @@ int main(int argc, const char** argv)
   num_lines    = readBinary<int>(infile);
   split_threshold = split_threshold > 1 ? split_threshold : num_lines;
   size_t num_files = (num_lines + split_threshold - 1) / split_threshold;
+  if (dataIdx > num_features) {
+    throw std::runtime_error("feature idx should be smaller than: " + 
+			     std::to_string(num_features));
+  }
 
   // debug
   PrintBuddha(std::cout);
@@ -146,34 +172,41 @@ int main(int argc, const char** argv)
     auto N = std::min(num_lines, f * split_threshold + split_threshold);
     for (auto i = f * split_threshold; i < N; ++i) {
       const int num_points = readBinary<int>(infile);
+      bool skip = false;
+      if (num_points == 1) {
+	// std::cout << "short line" << std::endl;
+	skip = true;
+      }
       for (auto j = 0; j < num_points; ++j) {	
-	// record file id
-	fileIdx.push_back(f);
-	// coordinate
+	// features
 	const float x = readBinary<float>(infile);
 	const float y = readBinary<float>(infile);
 	const float z = readBinary<float>(infile);
 	const vec3f p = {x, y, z};
-	outputData.position.push_back(p);
-	// features
 	std::vector<float> comps(num_features + 1);
 	for (auto k = 0; k < num_features + 1; ++k) {
 	  comps[k] = readBinary<float>(infile);
 	}
-	// index
-	outputData.index.push_back(outputData.position.size());
-	// radius
-	outputData.radius.push_back(0.15);
-	// preIndex
-	if (j == 0) {
-	  outputData.preIndex.push_back(-1);
-	} else {
-	  outputData.preIndex.push_back(outputData.position.size() - 1);
+	if (!skip) {
+	  // record file id
+	  fileIdx.push_back(f);
+	  // coordinate
+	  outputData.position.push_back(p);
+	  // index
+	  outputData.index.push_back(outputData.position.size());
+	  // radius
+	  outputData.radius.push_back(0.15);
+	  // preIndex
+	  if (j == 0) {
+	    outputData.preIndex.push_back(-1);
+	  } else {
+	    outputData.preIndex.push_back(outputData.position.size() - 1);
+	  }
+	  // component
+	  outputData.component.push_back(0);
+	  // record features
+	  dataval.push_back(comps[dataIdx]);
 	}
-	// component
-	outputData.component.push_back(0);
-	// record features
-	dataval.push_back(comps[dataIdx]);
       }
     }
   }
@@ -247,42 +280,34 @@ int main(int argc, const char** argv)
     const auto a = color.w  * histh;
     for (auto j = 0; j < histh; ++j) {
       const auto idx = i + j * histw;
+      vec4f c = color;
       if (j < y) {
-      	vec4f c = lerp(vec4f{1.f,1.f,1.f,1.f}, color, 0.1f);
-      	uint8_t *d = (uint8_t*) &(fb[idx]);
-      	d[0] = uint8_t(std::round(c.x * 255));
-      	d[1] = uint8_t(std::round(c.y * 255));
-      	d[2] = uint8_t(std::round(c.z * 255));
-      	d[3] = uint8_t(std::round(c.w * 255));
+      	c = lerp(vec4f{.0f,.0f,.0f,.5f}, c, 0.5f);
       }
-      else if (j < a) {
-      	vec4f c = lerp(vec4f{0.5f,0.5f,0.5f,1.f}, color, 0.5f);
-      	uint8_t *d = (uint8_t*) &(fb[idx]);
-      	d[0] = uint8_t(std::round(c.x * 255));
-      	d[1] = uint8_t(std::round(c.y * 255));
-      	d[2] = uint8_t(std::round(c.z * 255));
-      	d[3] = uint8_t(std::round(c.w * 255));
+      if (j < a) {
+      	c = lerp(vec4f{1.f,1.f,1.f,.5f}, c, 0.5f);
       }
-      else {
-	uint8_t *d = (uint8_t*) &(fb[idx]);
-	d[0] = uint8_t(std::round(color.x * 255));
-	d[1] = uint8_t(std::round(color.y * 255));
-	d[2] = uint8_t(std::round(color.z * 255));
-	d[3] = uint8_t(std::round(color.w * 255));
-      }
+      uint8_t *d = (uint8_t*) &(fb[idx]);
+      d[0] = uint8_t(std::round(c.x * 255));
+      d[1] = uint8_t(std::round(c.y * 255));
+      d[2] = uint8_t(std::round(c.z * 255));
+      d[3] = uint8_t(std::round(c.w * 255));      
     }
   }
-  writePPM("hist.ppm", histw, histh, fb.data());
 
   // WRITE TO OUTPUT
+  std::string dstr = (write_velocity ? "velocity" : dataStr[dataIdx]);
+  std::cout << "[i/o] start writing histogram image ..." << std::endl;    
+  writePPM((file_out + "-" + dstr + "-hist.ppm").c_str(), histw, histh, fb.data());
   std::cout << "[i/o] start writing swc ..." << std::endl;    
   for (auto f = 0; f < num_files; ++f) {
-    std::string fstr = num_files == 1 ? "" : "-" + std::to_string(f);
-    std::string dstr = (write_velocity ? "velocity" : dataStr[dataIdx]);
-    outputDataList[f].writeToOutput((file_out + fstr + 
-				     "-" + dstr + ".swc").c_str()); 
+    std::string fstr = num_files == 1 ? "" : "-split-" + std::to_string(f);
+    outputDataList[f].writeToOutput((file_out + "-" + 				     
+				     dstr + 
+				     fstr + 
+				     ".swc").c_str()); 
   }
-  std::cout << "[i/o] done writing swc ..." << std::endl; 
+  std::cout << "[i/o] done all the writings ..." << std::endl; 
   std::cout << std::endl;
 
   return 0;

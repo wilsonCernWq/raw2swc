@@ -123,25 +123,31 @@ struct swcFile
   std::vector<float> radius;
   std::vector<vec4f> color;
   std::vector<int> component;
+  bool isEmpty() { return index.empty(); }
   void writeToOutput(const std::string& filename)
   {
-    std::cout << "[i/o] >> writting file: " << filename << std::endl;
-    std::ofstream outfile (filename, std::ios::trunc);
-    for (int i = 0; i < index.size(); i++) {
-      outfile << index[i]      << ' '
-	      << component[i]  << ' '
-	      << position[i].x << ' '
-	      << position[i].y << ' '
-	      << position[i].z << ' '
-	      << radius[i]     << ' '
-	      << preIndex[i]   << ' '
-	      << color[i].x   << ' '
-	      << color[i].y   << ' '
-	      << color[i].z   << ' '
-	      << color[i].w
-	      << '\n';
+    if (!isEmpty()) {
+      std::cout << "[i/o] >> writting file: " << filename << std::endl;
+      std::ofstream outfile (filename, std::ios::trunc);
+      for (int i = 0; i < index.size(); i++) {
+	outfile << index[i]      << ' '
+		<< component[i]  << ' '
+		<< position[i].x << ' '
+		<< position[i].y << ' '
+		<< position[i].z << ' '
+		<< radius[i]     << ' '
+		<< preIndex[i]   << ' '
+		<< color[i].x   << ' '
+		<< color[i].y   << ' '
+		<< color[i].z   << ' '
+		<< color[i].w
+		<< '\n';
+      }
+      outfile.close();
     }
-    outfile.close();
+    else {
+      std::cout << "[i/o] >> skipping file: " << filename << std::endl;
+    }
   }
 };
 
