@@ -37,32 +37,21 @@ static const std::string dataStr[] =  {
   "vorticity"
 };
 
-// static std::vector<vec4f> colorList = {  // transfer functions
-//   vec4f{1.0, 0.0, 0.0, 1.0},
-//   vec4f{1.0, 0.0, 0.0, 0.9},
-//   vec4f{0.86500299999999997, 0.86500299999999997, 0.8, 0.8},
-//   vec4f{0.0, 0.86500299999999997, 0.4, 0.3},
-//   vec4f{0.0, 0.1, 0.6, 0.1},
-//   vec4f{0.0, 0.0, 1.0, 0.00},
-//   vec4f{0.0, 0.0, 1.0, 0.00},
-//   vec4f{0.0, 0.0, 1.0, 0.00},
-// };
-
 static std::vector<vec4f> colorList = {  // transfer functions
-  vec4f{0.0, 0.0, 1.0, 1.00},
-  vec4f{0.0, 0.0, 0.9, 0.95},
-  vec4f{0.0, 0.1, 0.9, 0.80},
-  vec4f{0.1, 0.9, 0.9, 0.50},
-  vec4f{0.1, 0.9, 0.8, 0.50},
-  vec4f{0.8, 0.9, 0.1, 0.50},
-  vec4f{0.9, 0.9, 0.1, 0.50},
-  vec4f{0.9, 0.1, 0.0, 0.20},
+  vec4f{1.0, 0.0, 0.0, 0.00},
+  vec4f{1.0, 0.0, 0.0, 0.00},
+  vec4f{1.0, 0.0, 0.0, 0.00},
+  vec4f{1.0, 0.0, 0.0, 0.00},
+  vec4f{1.0, 0.0, 0.0, 0.00},
   vec4f{0.9, 0.0, 0.0, 0.05},
-  vec4f{1.0, 0.0, 0.0, 0.00},
-  vec4f{1.0, 0.0, 0.0, 0.00},
-  vec4f{1.0, 0.0, 0.0, 0.00},
-  vec4f{1.0, 0.0, 0.0, 0.00},
-  vec4f{1.0, 0.0, 0.0, 0.00},
+  vec4f{0.9, 0.1, 0.0, 0.20},
+  vec4f{0.9, 0.9, 0.1, 0.50},
+  vec4f{0.8, 0.9, 0.1, 0.50},
+  vec4f{0.1, 0.9, 0.8, 0.50},
+  vec4f{0.1, 0.9, 0.9, 0.50},
+  vec4f{0.0, 0.1, 0.9, 0.80},
+  vec4f{0.0, 0.0, 0.9, 0.95},
+  vec4f{0.0, 0.0, 1.0, 1.00},
 };
 
 static size_t split_threshold = 0;
@@ -226,8 +215,8 @@ int main(int argc, const char** argv)
   std::vector<float>& data = write_velocity ? velocity : dataval;
 
   // find the max and the min
-  const float tmin = *std::max_element(data.begin(), data.end());
-  const float tmax = *std::min_element(data.begin(), data.end());
+  const float tmin = *std::min_element(data.begin(), data.end());
+  const float tmax = *std::max_element(data.begin(), data.end());
   const float trdis = 1.0f / (tmax - tmin);
 
   // generate histogram && convert feature to color   
